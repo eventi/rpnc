@@ -1,0 +1,48 @@
+collatz:
+    1{d2%(3*1+:2/)}
+fibonacci:
+    2{d1>(1-d2@s1-2@+)}
+var program = "[d2 0[+oo/o*rso=(s1 0:s2+d4=(1-)ood*>0s)](s)0*+oo=(0*:d./1)]." // find all factors
+
+math:       +-*/%
+equality:   <=>
+boolean:    ~&|
+condition:  (:)
+definition: {}
+loopif:     []
+string:     "
+char:       '
+here:       ^
+fetch:      @
+store:      !
+
+a
+b
+c
+dup
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+over
+p
+q
+roll
+swap
+t
+u
+v
+w
+x
+y
+z
+
+TODO: memory storage @!
+TODO: Function definition, call and return
+TODO: input
