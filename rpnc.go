@@ -6,13 +6,17 @@ import "github.com/pborman/getopt/v2"
 import "github.com/eventi/rpnc/stack"
 
 var debug bool = false
-var program string = "[d2 0[+oo/o*rso=(s1 0:s2+d4=(1-)ood*>0s)](s)0*+oo=(0*:d./1)]." // find all factors
+
+//var program string = "[d2 0[+oo/o*rso=(s1 0:s2+d4=(1-)ood*>0s)](s)0*+oo=(0*:d./1)]." // find all factors
 //var program = "[d2%(3*1+:2/)d1>]"         // collatz conjecture
 //var program = "oo/+2/" // approximate sqrt
+var program = "1 ^@ so ! 1+ ^! 0@ ."
+var heap []int
 
 func init() {
 	getopt.Flag(&debug, 'd', "Show debug output")
 	getopt.FlagLong(&program, "--execute", 'e', "Initialize a program")
+	getopt.Parse()
 }
 
 func _debug(mode int, mainstack *stack.Stack, program string, ix int, returnstack *stack.Stack) {
@@ -148,17 +152,36 @@ func equ(stack *stack.Stack) {
 	}
 }
 
+func fet(stack *stack.Stack) {
+	stack.Push(heap[stack.Pop()])
+}
+
+func sto(stack *stack.Stack) {
+	addr := stack.Pop()
+	fmt.Printf("addr:%v heap:%s\n", addr, heap)
+	switch {
+	case addr == len(heap):
+		heap = append(heap, stack.Pop())
+	case addr > len(heap):
+		panic("I just don't know what to do")
+	default:
+		heap[addr] = stack.Pop()
+	}
+}
+
 const BYTE = 0
 const COND = 1
 const NUMB = 2
 const SKIP = 3
 
 func main() {
-	getopt.Parse()
 	mainstack := stack.New()
 	mode := BYTE
 	returnstack := stack.New()
 	modestack := stack.New()
+	here := 1 // here points to the next available memory cell
+	heap = append(heap, here)
+	here += 1
 	for _, str := range getopt.Args() {
 		val, err := strconv.Atoi(str)
 		if err == nil {
@@ -192,6 +215,7 @@ func main() {
 			}
 		default:
 			switch bytecode {
+			// stack manipulation
 			case 'd':
 				dup(mainstack)
 			case 'o':
@@ -202,6 +226,7 @@ func main() {
 				swp(mainstack)
 			case '.':
 				dot(mainstack)
+				// math
 			case '+':
 				add(mainstack)
 			case '-':
@@ -212,14 +237,17 @@ func main() {
 				div(mainstack)
 			case '%':
 				mod(mainstack)
+				// comparison
 			case '<':
 				lst(mainstack)
 			case '=':
 				equ(mainstack)
-			case '~':
-				not(mainstack)
 			case '>':
 				gtt(mainstack)
+				// logical negation
+			case '~':
+				not(mainstack)
+				// conditional
 			case '(': // if
 				if mainstack.Pop() == 0 {
 					mode = SKIP
@@ -240,6 +268,14 @@ func main() {
 				} else {
 					ix = returnstack.Peek()
 				}
+				// manipulate memory
+			case '^':
+				mainstack.Push(0)
+			case '@':
+				fet(mainstack)
+			case '!':
+				sto(mainstack)
+
 			case ' ': //noop
 
 			default:
