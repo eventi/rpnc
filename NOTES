@@ -16,33 +16,34 @@ here:       ^
 fetch:      @
 store:      !
 
-a
-b
-c
-dup
-e
-f
-g
-h
-i
-j
-k
-l
-m
-n
-over
-p
-q
-roll
-swap
-t
-u
-v
-w
-x
-y
-z
-
-TODO: memory storage @!
 TODO: Function definition, call and return
-TODO: input
+TODO: allot free -- are these forth words?
+: allot ( size -- addr )
+    \ look for block in free
+    \ else
+    \ make new block
+    \ size,next,data
+        \ get heap for block
+    here @   ( size here )
+    over 2 + ( size here size+2 )
+    over +   ( size addr size+2+here )
+    here !      ( size addr )
+        \ fill in fields - size
+    swap over ! ( addr )
+        \ fill in fields - next
+    dup 1+ 0 swap !  ( addr 0 addr' )
+
+vi macros
+    \d t)bywP
+    \s t)bT bT df wP
+    \o
+
+
+TODO: input from STDIN
+TODO: heap functions (byte, int, etc...)
+
+m: T( => c
+m: F( => s
+cX(
+cX:
+cX)

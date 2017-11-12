@@ -10,8 +10,8 @@ var debug bool = false
 //var program string = "[d2 0[+oo/o*rso=(s1 0:s2+d4=(1-)ood*>0s)](s)0*+oo=(0*:d./1)]." // find all factors
 //var program = "[d2%(3*1+:2/)d1>]"         // collatz conjecture
 //var program = "oo/+2/" // approximate sqrt
-var program = "1 ^@ so ! 1+ ^! 0@ ."
-var heap []int
+var program = "1^@so!1+^!0@."
+var heap = make([]byte, 1024)
 
 func init() {
 	getopt.Flag(&debug, 'd', "Show debug output")
@@ -26,8 +26,6 @@ func _debug(mode int, mainstack *stack.Stack, program string, ix int, returnstac
 		modestr = "bytecode"
 	case NUMB:
 		modestr = "number"
-	case COND:
-		modestr = "conditional"
 	case SKIP:
 		modestr = "skip"
 	}
@@ -152,25 +150,31 @@ func equ(stack *stack.Stack) {
 	}
 }
 
+//memory functions
 func fet(stack *stack.Stack) {
-	stack.Push(heap[stack.Pop()])
+	// heap contains chars and we need an int
+	addr := stack.Pop()
+	//get 4 bytes (I think)
+	value := 0
+	for i := 0; i <= 3; i++ {
+		value = value << 8
+		value += int(heap[addr+i])
+	}
 }
 
 func sto(stack *stack.Stack) {
 	addr := stack.Pop()
 	fmt.Printf("addr:%v heap:%s\n", addr, heap)
-	switch {
-	case addr == len(heap):
-		heap = append(heap, stack.Pop())
-	case addr > len(heap):
-		panic("I just don't know what to do")
-	default:
-		heap[addr] = stack.Pop()
+	if addr+3 >= len(heap) {
+		heap = append(heap, make([]byte, 1024)...)
+	}
+	val := stack.Pop()
+	for i := uint(0); i <= 3; i++ {
+		heap[addr] = byte(val >> i * 8 & 0x000000FF)
 	}
 }
 
 const BYTE = 0
-const COND = 1
 const NUMB = 2
 const SKIP = 3
 
@@ -179,7 +183,7 @@ func main() {
 	mode := BYTE
 	returnstack := stack.New()
 	modestack := stack.New()
-	here := 1 // here points to the next available memory cell
+	var here byte = 1 // here points to the next available memory cell
 	heap = append(heap, here)
 	here += 1
 	for _, str := range getopt.Args() {
@@ -208,8 +212,8 @@ func main() {
 			switch bytecode {
 			case '(': // nesting - oh no
 				modestack.Push(mode)
-			case ':': // else
-				mode = COND
+			case ':':
+				mode = modestack.Peek()
 			case ')': // end if
 				mode = modestack.Pop()
 			}
@@ -249,15 +253,15 @@ func main() {
 				not(mainstack)
 				// conditional
 			case '(': // if
+				modestack.Push(mode)
 				if mainstack.Pop() == 0 {
 					mode = SKIP
-				} else {
-					mode = COND
 				}
 			case ':': // else
 				mode = SKIP
 			case ')': // then (end if)
 				mode = modestack.Pop()
+				// looping
 			case '[': // loop
 				returnstack.Push(ix)
 			case ']': // loop
@@ -289,5 +293,7 @@ func main() {
 			}
 		}
 	}
-	fmt.Printf("Stack: %s\n", mainstack)
+	if mainstack.Len() != 0 {
+		fmt.Printf("Stack: %s\n", mainstack)
+	}
 }
