@@ -1,5 +1,5 @@
 collatz:
-    1{d2%(3*1+:2/)}
+    [d2%(3*1+:2/)d.d1>]
 fibonacci:
     2{d1>(1-d2@s1-2@+)}
 var program = "[d2 0[+oo/o*rso=(s1 0:s2+d4=(1-)ood*>0s)](s)0*+oo=(0*:d./1)]." // find all factors
@@ -15,6 +15,8 @@ char:       '
 here:       ^
 fetch:      @
 store:      !
+unused:     `#$_\;,?
+stack:      dors
 
 TODO: Function definition, call and return
 TODO: allot free -- are these forth words?
@@ -39,11 +41,88 @@ vi macros
     \o
 
 
-TODO: input from STDIN
+TODO: Machine struct ( heap, stack, modestack, returnstack )
 TODO: heap functions (byte, int, etc...)
+TODO: outer forth loop
+\ 5 variables (state, >in, #tib, dp, last) and a constant (tib).
 
-m: T( => c
-m: F( => s
-cX(
-cX:
-cX)
+\ 0 tib     ( -- addr ) - pointer to input buffer
+\ 1 #tib    ( -- addr ) - chars in input buffer (const)
+\ 2 >in     ( -- addr ) - next char in input buffer
+\ 3 state   ( -- addr ) - true: compiling, false: interpreting
+\ 4 dp      ( -- addr ) - first free cell in dictionary
+\ 5 base    ( -- addr ) - the current number base
+\ 6 last    ( -- addr ) - last defined word
+
+: interpret
+begin
+    #tib @ >in @ =
+    if
+        tib 50 accept #tib ! 0 >in !
+    then
+    32 word find dup
+    if
+        state @ =
+        if
+            ,
+        else
+            execute
+        then
+    else
+        dup rot count >number
+        if
+            state @
+            if
+                last @ dup @ last ! dp !
+            then
+            abort
+        then
+        drop drop state @
+        if
+            ['] lit , ,
+        then
+    then
+again
+;
+
+\ words
+,   - ( x -- ) compile x to current definition 
+c,  - ( c -- ) compile c to current definition
+lit - ( -- )   push the value in the cell after this
+
++   - ( a b -- a+b ) add
+=   - ( a b -- a=b ) equal
+
+count   - ( addr -- addr2 len ) addr contains a counted string. Return the address of the first character and the string's length
+>number - ( double addr len -- double2 addr2 len2 ) convert string to number
+
+accept  - ( addr len -- len2 ) read a string from the terminal
+emit    - ( char -- ) display char on the terminal
+word    - ( char -- addr ) parse the next word in the input buffer
+
+find    - ( addr -- addr2 flag ) look up word in the dictionary
+  flag  0: addr2 is a counted string
+  flag  1: addr2 is a call address if word is immediate
+  flag -1: addr2 is a call address if word is not immediate
+
+abort - ( -- ) initialise Itsy then jump to interpret
+
+!
+:
+;
+@
+[']
+again
+begin
+drop
+dup
+else
+execute
+if
+last
+lit
+rot
+state
+then
+
+TODO: Read from files (input, program...)

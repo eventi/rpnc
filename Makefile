@@ -1,7 +1,8 @@
 .PHONY: test
 
-test:
-	bats ./test/*.bats
+test: rpnc
+	go test
+	bats -t ./test/*.bats
 
-build: rpnc.go
+rpnc: *.go */*.go
 	go build
