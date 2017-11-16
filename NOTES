@@ -19,6 +19,38 @@ unused:     `#$_\;,?
 stack:      dors
 
 TODO: Function definition, call and return
+: call    ( token -- )
+  ip> >R  ( ) (R: ip )
+  >ip     ( )
+;
+
+: return  ( -- ) (R: ip )
+  R> >ip
+;
+
+Definition
+00:prev
+04:flags
+05:count
+06:name
+NN:definition
+
+ex:
+10: 00
+14: STRING
+15: 4
+16: 2dup
+1A: oo;
+1D: 10 \points to last word
+1E: TOKEN
+1F: 4
+20: boop
+24: token1
+28: 00000035
+2C: token3
+30: 00000000
+
+
 TODO: allot free -- are these forth words?
 : allot ( size -- addr )
     \ look for block in free
@@ -41,7 +73,6 @@ vi macros
     \o
 
 
-TODO: Machine struct ( heap, stack, modestack, returnstack )
 TODO: heap functions (byte, int, etc...)
 TODO: outer forth loop
 \ 5 variables (state, >in, #tib, dp, last) and a constant (tib).

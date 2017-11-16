@@ -3,7 +3,8 @@ package machine
 import "github.com/eventi/rpnc/stack"
 import "fmt"
 
-const BYTE = 0
+const INTERPRET = 0
+const CMPL = 1
 const NUMB = 2
 const SKIP = 3
 
@@ -12,26 +13,38 @@ type Machine struct {
 	R     stack.Stack
 	H     []byte
 	Mode  int
+	Here  int
 	input []byte
+	start int
+	IP    int
 }
 
 func New() *Machine {
 	this := new(Machine)
 	this.H = make([]byte, 1024)
+	this.Here = 512
 	return this
 }
 
-func (this *Machine) SendInput(input string) {
+func (this *Machine) AcceptInput(input string) {
 	for _, b := range input {
 		this.input = append(this.input, byte(b))
+	}
+}
+
+func (this *Machine) SetProgram(input string) {
+	this.IP = this.Here
+	for _, b := range input {
+		this.H[this.Here] = byte(b)
+		this.Here++
 	}
 }
 
 func (this *Machine) Debug(program string, ix int) {
 	var modestr string
 	switch this.Mode {
-	case BYTE:
-		modestr = "bytecode"
+	case INTERPRET:
+		modestr = "interpret"
 	case NUMB:
 		modestr = "number"
 	case SKIP:

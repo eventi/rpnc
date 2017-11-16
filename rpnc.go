@@ -22,16 +22,13 @@ func init() {
 	getopt.Parse()
 }
 
-const BYTE = 0
-const NUMB = 2
-const SKIP = 3
-
 func main() {
 	if verbose {
 		fmt.Printf("Input: %s\nProgram: %s\n", input, program)
 	}
 	var m = machine.New()
-	m.SendInput(input)
+	m.AcceptInput(input)
+	m.SetProgram(program)
 	for _, str := range getopt.Args() {
 		val, err := strconv.Atoi(str)
 		if err == nil {
@@ -40,23 +37,24 @@ func main() {
 			panic(err)
 		}
 	}
-	for ix := 0; ix < len(program); ix += 1 {
-		bytecode := byte(program[ix])
+	end := len(program) + m.IP
+	for m.IP != end {
+		bytecode := byte(m.H[m.IP])
 		if debug {
-			m.Debug(program, ix)
+			m.Debug(string(m.H), m.IP)
 		}
 		switch m.Mode {
-		case NUMB:
+		case machine.NUMB:
 			switch {
 			case bytecode >= '0' && bytecode <= '9':
 				acc := m.Pop()
 				acc = acc*10 + int(bytecode-'0')
 				m.Push(acc)
 			default:
-				m.Mode = BYTE
-				ix -= 1
+				m.Mode = machine.INTERPRET
+				m.IP -= 1
 			}
-		case SKIP: //skip the wrong part of a conditional
+		case machine.SKIP: //skip the wrong part of a conditional
 			switch bytecode {
 			case '(': // nesting - oh no
 				m.R.Push(m.Mode)
@@ -65,7 +63,21 @@ func main() {
 			case ')': // end if
 				m.Mode = m.R.Pop()
 			}
-		default:
+		case machine.CMPL:
+			switch bytecode {
+			case '}':
+				// end compilation
+			case '[':
+			case ']':
+			case '(':
+			case ':':
+			case ')':
+			case '{':
+				panic("you can't create a definition in a definition")
+			default:
+				//compile
+			}
+		case machine.INTERPRET: //interpret mode
 			switch bytecode {
 			// stack manipulation
 			case 'd':
@@ -103,22 +115,22 @@ func main() {
 			case '(': // if
 				m.R.Push(m.Mode)
 				if m.Pop() == 0 {
-					m.Mode = SKIP
+					m.Mode = machine.SKIP
 				}
 			case ':': // else
-				m.Mode = SKIP
+				m.Mode = machine.SKIP
 			case ')': // then (end if)
 				m.Mode = m.R.Pop()
 				// looping
 			case '[': // loop
-				m.R.Push(ix)
+				m.R.Push(m.IP)
 			case ']': // loop
 				var condition int
 				condition = m.Pop()
 				if condition == 0 {
 					_ = m.R.Pop()
 				} else {
-					ix = m.R.Peek()
+					m.IP = m.R.Peek()
 				}
 				// manipulate memory
 			case '@':
@@ -127,6 +139,24 @@ func main() {
 				m.Store()
 			case '#':
 				m.Inp()
+			case '\'':
+				m.Push(int(m.H[m.IP+1]))
+				m.IP += 1
+
+			case '{':
+				//store the current value of here in the four bytes starting with TOS * 4
+				ival := m.Pop()
+				for i := 0; i <= 3; i++ {
+					m.H[m.Here] = byte(ival & 0x000000FF)
+					m.Here++
+					ival = ival >> 8
+				}
+				m.Mode = machine.CMPL
+			case '$': //: call    ( token -- )
+				m.R.Push(m.IP) //  ip> >R  ( ) (R: ip )
+				m.IP = m.Pop() //  >ip     ( )
+			case ';':
+				m.IP = m.R.Pop()
 
 			case ' ': //noop
 
@@ -134,12 +164,13 @@ func main() {
 				switch {
 				case bytecode >= '0' && bytecode <= '9':
 					m.Push(int(bytecode - '0'))
-					m.Mode = NUMB
+					m.Mode = machine.NUMB
 				default:
 					panic("Unknown bytecode: [" + string(bytecode) + "]")
 				}
 			}
 		}
+		m.IP++
 	}
 	if verbose {
 		fmt.Printf("Machine: %s\n", m)
